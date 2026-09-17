@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lemma 1: two dials</title>
+<style>
+  :root {
+    --paper: #faf9f6; --paper-2: #f1efe9; --ink: #1e1d1a; --ink-2: #625e56; --rule: #dedad0;
+    --grid: #e6e2d9; --grid-minor: #f0ede6; --envelope: #8a867c;
+    --policy: #b5121f; --split: #146f6f;
+    --one: #2a2926; --zero: #c9c4b8; --zero-edge: #a8a397; --zero-fill: #faf9f6;
+    --focus: #146f6f;
+    --sans: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, Menlo, Consolas, "Liberation Mono", monospace;
+    --serif: Georgia, "Times New Roman", serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #17181a; --paper-2: #1f2124; --ink: #ece9e1; --ink-2: #a5a198; --rule: #36383c;
+      --grid: #2b2d31; --grid-minor: #232528; --envelope: #8b8f96;
+      --policy: #e5535f; --split: #3fb3ae;
+      --one: #f1eee6; --zero: #4a4c50; --zero-edge: #6b6e74; --zero-fill: #17181a;
+      --focus: #3fb3ae;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.42; padding-block: 34px 48px; padding-inline: 20px; }
+  .wrap { max-width: 940px; margin: 0 auto; display: grid; gap: 36px; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  sub, sup { line-height: 0; }
+  a { color: var(--split); text-underline-offset: 3px; }
+  a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
+  [hidden] { display: none !important; }
+
+  /* the two dials: shared by both views */
+  .dials { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  .dial { display: grid; gap: 6px; }
+  .dial label { font-size: 15px; font-weight: 500; display: flex; justify-content: space-between; align-items: baseline; }
+  .dial .value { font-family: var(--mono); font-size: 34px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .dial.policy label, .dial.policy .value { color: var(--policy); }
+  .dial.split label, .dial.split .value { color: var(--split); }
+  .dial .what { color: var(--ink-2); font-size: 13.5px; }
+  input[type=range] { width: 100%; margin: 0; height: 28px; }
+  .dial.policy input { accent-color: var(--policy); }
+  .dial.split input { accent-color: var(--split); }
+  input[type=range]:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: 4px; }
+  .match { display: flex; justify-content: flex-end; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .match span { font-size: 13px; color: var(--ink-2); }
+  button { font: inherit; font-size: 14px; padding: 7px 14px; border: 1px solid var(--rule); background: transparent; color: var(--ink); border-radius: 6px; cursor: pointer; }
+  button:hover { border-color: var(--ink-2); }
+  .switch { font-size: 15px; }
+
+  /* simple view */
+  .buckets { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: end; }
+  .bucket { display: grid; gap: 14px; }
+  .bucket h2 { margin: 0; font-size: 17px; font-weight: 600; display: flex; justify-content: space-between; align-items: baseline; }
+  .bucket h2 small { font-family: var(--mono); font-size: 13px; font-weight: 400; color: var(--ink-2); }
+  .bucket.S h2 { color: var(--split); }
+  .bucket svg { width: 100%; height: auto; display: block; }
+  .tally { font-family: var(--mono); font-size: 15px; font-variant-numeric: tabular-nums; display: grid; gap: 4px; }
+  .tally .mean { font-size: 24px; font-weight: 500; }
+  .tally .mean span { color: var(--ink-2); font-size: 15px; font-weight: 400; }
+  .gain { display: grid; gap: 4px; justify-items: start; border-top: 1px solid var(--rule); padding-top: 22px; }
+  .gain .k { font-size: 15px; color: var(--ink-2); }
+  .gain .v { font-family: var(--mono); font-size: 44px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .gain .s { font-size: 15px; color: var(--ink-2); }
+  details { border-top: 1px solid var(--rule); padding-top: 18px; }
+  summary { cursor: pointer; font-size: 15px; color: var(--ink-2); list-style: none; display: inline-flex; gap: 8px; align-items: center; }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "+"; font-family: var(--mono); }
+  details[open] summary::before { content: "\2212"; }
+  .math { margin-top: 16px; display: grid; gap: 14px; max-width: 70ch; font-size: 15px; }
+  .math .f { font-family: var(--mono); font-size: 14px; background: var(--paper-2); border-radius: 6px; padding: 10px 14px; overflow-x: auto; }
+  .math p { margin: 0; }
+
+  /* detailed view */
+  #detail { display: grid; gap: 30px; }
+  .lead { margin: 0; color: var(--ink-2); max-width: 70ch; font-size: 15px; }
+  .model { font-family: var(--mono); font-size: 13.5px; background: var(--paper-2); border: 1px solid var(--rule); border-radius: 4px; padding: 8px 12px; display: inline-block; margin-top: 10px; overflow-x: auto; max-width: 100%; }
+  section h2 { font-family: var(--serif); font-weight: 600; font-size: 19px; margin: 0 0 8px; }
+  section .note { color: var(--ink-2); font-size: 13.5px; margin: 0 0 10px; max-width: 72ch; }
+  .tapebox { overflow-x: auto; }
+  .tape { width: 100%; min-width: 640px; height: auto; display: block; }
+  .cells { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 12px; }
+  .cell { border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; display: grid; gap: 6px; }
+  .cell h3 { margin: 0; font-size: 14px; font-weight: 600; display: flex; justify-content: space-between; gap: 10px; }
+  .cell h3 span:last-child { color: var(--ink-2); font-weight: 400; font-family: var(--mono); font-size: 13px; }
+  .row { display: flex; justify-content: space-between; gap: 10px; font-family: var(--mono); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+  .row b { font-weight: 500; }
+  .cell.S { border-color: var(--split); }
+  .cell.S h3 { color: var(--split); }
+  .result { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 14px; }
+  .stat { border-top: 2px solid var(--rule); padding-top: 8px; }
+  .stat .k { font-size: 12px; letter-spacing: 0.04em; color: var(--ink-2); }
+  .stat .v { font-family: var(--mono); font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .stat .f { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); }
+  .stat.gamma { border-top-color: var(--policy); }
+  .stat.gainstat { border-top-color: var(--split); }
+  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .chart { border: 1px solid var(--rule); border-radius: 6px; padding: 10px 8px 6px; background: var(--paper-2); }
+  .chart svg { width: 100%; height: auto; display: block; }
+  .axis text, .lab { font-family: var(--mono); font-size: 11px; fill: var(--ink-2); }
+  .grid-l { stroke: var(--grid); stroke-width: 1; }
+  .grid-m { stroke: var(--grid-minor); stroke-width: 1; }
+  .ax { stroke: var(--rule); stroke-width: 1; }
+  .curve { fill: none; stroke: var(--policy); stroke-width: 2.2; }
+  .env { fill: none; stroke: var(--envelope); stroke-width: 1.4; stroke-dasharray: 5 4; }
+  .vline-p { stroke: var(--split); stroke-width: 1.2; stroke-dasharray: 3 3; }
+  .vline-ps { stroke: var(--policy); stroke-width: 1.2; stroke-dasharray: 3 3; }
+  .mark { fill: var(--split); stroke: var(--paper); stroke-width: 1.5; }
+  .peak { fill: var(--policy); stroke: var(--paper); stroke-width: 1.5; }
+  .leg { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-2); padding: 4px 6px 0; }
+  .leg i { display: inline-block; width: 18px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 6px; }
+  .leg .a i { border-color: var(--policy); }
+  .leg .b i { border-color: var(--envelope); border-top-style: dashed; }
+  .leg .c i { border-color: var(--split); border-top-style: dotted; }
+  .closed { color: var(--ink-2); font-size: 13.5px; max-width: 72ch; margin: 0; }
+  @media (max-width: 640px) {
+    .dials, .buckets, .cells, .charts { grid-template-columns: 1fr; gap: 26px; }
+    .result { grid-template-columns: 1fr; }
+    .gain .v { font-size: 36px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Lemma 1: two dials</h1>
+
+  <div class="dials">
+    <div class="dial policy">
+      <label for="ps"><span>Policy p<sub>*</sub></span><span class="value" id="psVal">0.50</span></label>
+      <input type="range" id="ps" min="1" max="99" step="1" value="50" aria-label="policy p star">
+      <div class="what" data-detail hidden>The fraction of states the policy sends to h<sub>+</sub>. It belongs to the policy; the split cannot move it.</div>
+    </div>
+    <div class="dial split">
+      <label for="p"><span>Split p</span><span class="value" id="pVal">0.50</span></label>
+      <input type="range" id="p" min="1" max="99" step="1" value="50" aria-label="split p">
+      <div class="what" data-detail hidden>The fraction of states the split puts in S. It belongs to the split.</div>
+      <div class="match"><span id="matchNote" data-detail hidden></span><button id="match" type="button">Match the policy</button></div>
+    </div>
+  </div>
+
+  <!-- ===================== the simple view (default) ===================== -->
+  <div id="simple" style="display:grid;gap:36px">
+    <div class="buckets">
+      <div class="bucket Sc">
+        <h2><span>S<sup>c</sup></span><small id="b_scSize"></small></h2>
+        <svg id="b_Sc" viewBox="0 0 400 300" role="img" aria-label="states in S complement"></svg>
+        <div class="tally"><div id="b_scCounts"></div><div class="mean" id="b_scMean"></div></div>
+      </div>
+      <div class="bucket S">
+        <h2><span>S</span><small id="b_sSize"></small></h2>
+        <svg id="b_S" viewBox="0 0 400 300" role="img" aria-label="states in S"></svg>
+        <div class="tally"><div id="b_sCounts"></div><div class="mean" id="b_sMean"></div></div>
+      </div>
+    </div>
+
+    <div class="gain">
+      <div class="k">Gain of the split, &#916;(S) / (h<sub>+</sub> &#8722; h<sub>&#8722;</sub>)<sup>2</sup></div>
+      <div class="v" id="b_gain"></div>
+      <div class="s" id="b_gainS"></div>
+    </div>
+
+    <details>
+      <summary>Show the mathematics</summary>
+      <div class="math">
+        <p>100 states ordered by <i>X</i><sub>j</sub>. The policy sends the top 100&#183;p<sub>*</sub> of them to <i>h</i><sub>+</sub> (ones) and the rest to <i>h</i><sub>&#8722;</sub> (zeros): <i>Y</i> = <i>h</i><sub>&#8722;</sub> + (<i>h</i><sub>+</sub> &#8722; <i>h</i><sub>&#8722;</sub>)&#183;1{<i>X</i><sub>j</sub> &gt; &#952;<sub>*</sub>} with p<sub>*</sub> = Pr(<i>X</i><sub>j</sub> &gt; &#952;<sub>*</sub>). The split takes the top 100&#183;p as its cell <i>S</i> = {<i>X</i><sub>j</sub> &gt; &#952;}, p = Pr(<i>S</i>); the rest is <i>S</i><sup>c</sup>. Each bucket's mean is its fraction of ones; the leaf values are those means.</p>
+        <div class="f" id="b_mLeaves"></div>
+        <div class="f" id="b_mGamma"></div>
+        <div class="f" id="b_mGain"></div>
+        <p>Closed forms: for p &#8804; p<sub>*</sub>, &#947;(p)/(h<sub>+</sub>&#8722;h<sub>&#8722;</sub>) = (1&#8722;p<sub>*</sub>)/(1&#8722;p); for p &#8805; p<sub>*</sub>, p<sub>*</sub>/p. The gain p(1&#8722;p)&#947;<sup>2</sup> is largest only at p = p<sub>*</sub>, where both buckets are pure, &#947; = h<sub>+</sub>&#8722;h<sub>&#8722;</sub>, and the gain equals p<sub>*</sub>(1&#8722;p<sub>*</sub>) = Var(Y)/(h<sub>+</sub>&#8722;h<sub>&#8722;</sub>)<sup>2</sup>.</p>
+      </div>
+    </details>
+
+    <div class="switch"><a href="#detail" id="toDetail">More detail &#8594;</a></div>
+  </div>
+
+  <!-- ===================== the detailed view ===================== -->
+  <div id="detail" hidden>
+    <div>
+      <p class="lead">Two independent dials: <b style="color:var(--policy)">p<sub>*</sub></b> belongs to the policy, <b style="color:var(--split)">p</b> belongs to the split. A population of 100 states ordered along <i>X</i><sub>j</sub>; the policy sets the top 100&#183;p<sub>*</sub> of them to <i>h</i><sub>+</sub> (ones) and the rest to <i>h</i><sub>&#8722;</sub> (zeros); the split takes the top 100&#183;p as its cell <i>S</i>.</p>
+      <div class="model">Y = h<sub>&#8722;</sub> + (h<sub>+</sub> &#8722; h<sub>&#8722;</sub>)&#183;1{X<sub>j</sub> &gt; &#952;<sub>*</sub>},&nbsp; p<sub>*</sub> = Pr(X<sub>j</sub> &gt; &#952;<sub>*</sub>);&nbsp; S = {X<sub>j</sub> &gt; &#952;},&nbsp; p = Pr(S).&nbsp; Values shown with h<sub>+</sub> = 1, h<sub>&#8722;</sub> = 0.</div>
+    </div>
+
+    <section>
+      <h2>The 100 states</h2>
+      <p class="note">Left to right is increasing <i>X</i><sub>j</sub>. Filled marks are ones (<i>h</i><sub>+</sub>), pale marks are zeros (<i>h</i><sub>&#8722;</sub>). The red line is the policy threshold &#952;<sub>*</sub>; the teal line is the split threshold &#952;. Everything right of the teal line is <i>S</i>.</p>
+      <div class="tapebox"><svg class="tape" id="d_tape" viewBox="0 0 1000 120" role="img" aria-label="one hundred states with the policy and split thresholds"></svg></div>
+      <div class="cells">
+        <div class="cell Sc">
+          <h3><span>S<sup>c</sup> &#8212; left of the split</span><span id="d_scMass"></span></h3>
+          <div class="row"><span>ones (h<sub>+</sub>)</span><b id="d_scOnes"></b></div>
+          <div class="row"><span>zeros (h<sub>&#8722;</sub>)</span><b id="d_scZeros"></b></div>
+          <div class="row"><span>E[Y | S<sup>c</sup>] = ones &#247; size</span><b id="d_scMean"></b></div>
+        </div>
+        <div class="cell S">
+          <h3><span>S &#8212; right of the split</span><span id="d_sMass"></span></h3>
+          <div class="row"><span>ones (h<sub>+</sub>)</span><b id="d_sOnes"></b></div>
+          <div class="row"><span>zeros (h<sub>&#8722;</sub>)</span><b id="d_sZeros"></b></div>
+          <div class="row"><span>E[Y | S] = ones &#247; size</span><b id="d_sMean"></b></div>
+        </div>
+      </div>
+      <div class="result">
+        <div class="stat gamma"><div class="k">&#947;(p) / (h<sub>+</sub> &#8722; h<sub>&#8722;</sub>)</div><div class="v" id="d_gamma"></div><div class="f" id="d_gammaF"></div></div>
+        <div class="stat gainstat"><div class="k">&#916;(S) / (h<sub>+</sub> &#8722; h<sub>&#8722;</sub>)<sup>2</sup> = p(1&#8722;p)&#947;<sup>2</sup></div><div class="v" id="d_gain"></div><div class="f" id="d_gainF"></div></div>
+        <div class="stat"><div class="k">&#916;(S) / Var(Y)</div><div class="v" id="d_frac"></div><div class="f" id="d_fracF"></div></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>The two curves at this p<sub>*</sub></h2>
+      <p class="note">Each curve is drawn for the current policy dial; the teal marker rides it at the current split dial. Moving p<sub>*</sub> reshapes the curves; moving p only slides the marker.</p>
+      <div class="charts">
+        <div class="chart">
+          <svg id="d_c1" viewBox="0 0 480 300" role="img" aria-label="gamma of p over h plus minus h minus, against p"></svg>
+          <div class="leg"><span class="a"><i></i>&#947;(p)/(h<sub>+</sub>&#8722;h<sub>&#8722;</sub>)</span><span class="c"><i></i>p (split)</span></div>
+        </div>
+        <div class="chart">
+          <svg id="d_c2" viewBox="0 0 480 300" role="img" aria-label="gain over h plus minus h minus squared, against p"></svg>
+          <div class="leg"><span class="a"><i></i>p(1&#8722;p)[&#947;(p)/(h<sub>+</sub>&#8722;h<sub>&#8722;</sub>)]<sup>2</sup></span><span class="b"><i></i>fixed &#947;: p(1&#8722;p)</span><span class="c"><i></i>p (split)</span></div>
+        </div>
+      </div>
+    </section>
+
+    <p class="closed">Closed forms: for p &#8804; p<sub>*</sub>, &#947;(p)/(h<sub>+</sub>&#8722;h<sub>&#8722;</sub>) = (1&#8722;p<sub>*</sub>)/(1&#8722;p); for p &#8805; p<sub>*</sub>, it is p<sub>*</sub>/p. The gain peaks only at p = p<sub>*</sub>, where it equals p<sub>*</sub>(1&#8722;p<sub>*</sub>) = Var(Y)/(h<sub>+</sub>&#8722;h<sub>&#8722;</sub>)<sup>2</sup> and touches the fixed-&#947; curve p(1&#8722;p). With 100 states every count is exact, so the dials step by 0.01.</p>
+
+    <div class="switch"><a href="#" id="toSimple">&#8592; Back to the simple view</a></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var N = 100;
+  function $(id) { return document.getElementById(id); }
+  var ps = $('ps'), p = $('p');
+
+  function gammaOverD(pp, pstar) { return pp <= pstar ? (1 - pstar) / (1 - pp) : pstar / pp; }
+  function gainOverD2(pp, pstar) { var g = gammaOverD(pp, pstar); return pp * (1 - pp) * g * g; }
+
+  // ---------- simple view: a bucket filled from the bottom, ones first ----------
+  function drawBucket(svg, ones, zeros) {
+    var cols = 10, W = 400, H = 300, pad = 18, cell = (W - 2 * pad) / cols, r = cell * 0.36;
+    var s = '<rect x="6" y="6" width="' + (W - 12) + '" height="' + (H - 12) + '" rx="18" fill="var(--paper-2)"/>';
+    var total = ones + zeros;
+    for (var i = 0; i < total; i++) {
+      var row = Math.floor(i / cols), col = i % cols;
+      var cx = (pad + col * cell + cell / 2).toFixed(1), cy = (H - pad - row * cell - cell / 2).toFixed(1);
+      s += i < ones
+        ? '<circle cx="' + cx + '" cy="' + cy + '" r="' + r.toFixed(1) + '" fill="var(--one)"/>'
+        : '<circle cx="' + cx + '" cy="' + cy + '" r="' + (r - 1).toFixed(1) + '" fill="var(--zero-fill)" stroke="var(--zero-edge)" stroke-width="2"/>';
+    }
+    svg.innerHTML = s;
+  }
+
+  // ---------- detailed view: the tape of 100 states ----------
+  function drawTape(k, kStar) {
+    var onesStart = N - kStar, splitAt = N - k;
+    var x0 = 20, x1 = 980, w = (x1 - x0) / N, y = 48, h = 34, r = 3, s = '';
+    s += '<line x1="' + x0 + '" x2="' + x1 + '" y1="' + (y + h + 8) + '" y2="' + (y + h + 8) + '" class="ax"/>';
+    for (var i = 0; i < N; i++) {
+      var x = x0 + i * w + 1.2;
+      s += '<rect x="' + x.toFixed(1) + '" y="' + y + '" width="' + (w - 2.4).toFixed(1) + '" height="' + h + '" rx="' + r + '" fill="var(--' + (i >= onesStart ? 'one' : 'zero') + ')"/>';
+    }
+    var xs = x0 + onesStart * w, xp = x0 + splitAt * w;
+    s += '<line x1="' + xs + '" x2="' + xs + '" y1="' + (y - 18) + '" y2="' + (y + h + 8) + '" stroke="var(--policy)" stroke-width="2.5"/>';
+    s += '<text x="' + xs + '" y="' + (y - 24) + '" text-anchor="middle" class="lab" style="fill:var(--policy)">\u03b8* \u00b7 ones begin</text>';
+    s += '<line x1="' + xp + '" x2="' + xp + '" y1="' + (y - 4) + '" y2="' + (y + h + 26) + '" stroke="var(--split)" stroke-width="2.5"/>';
+    s += '<text x="' + xp + '" y="' + (y + h + 40) + '" text-anchor="middle" class="lab" style="fill:var(--split)">\u03b8 \u00b7 S begins</text>';
+    s += '<text x="' + ((x0 + xp) / 2) + '" y="' + (y + h + 22) + '" text-anchor="middle" class="lab">S<tspan baseline-shift="super" font-size="8">c</tspan>: ' + splitAt + ' states</text>';
+    s += '<text x="' + ((xp + x1) / 2) + '" y="' + (y + h + 22) + '" text-anchor="middle" class="lab" style="fill:var(--split)">S: ' + (N - splitAt) + ' states</text>';
+    s += '<text x="' + x0 + '" y="' + (y + h + 56) + '" class="lab">low X<tspan baseline-shift="sub" font-size="8">j</tspan></text>';
+    s += '<text x="' + x1 + '" y="' + (y + h + 56) + '" text-anchor="end" class="lab">high X<tspan baseline-shift="sub" font-size="8">j</tspan></text>';
+    $('d_tape').innerHTML = s;
+  }
+
+  // ---------- detailed view: one chart ----------
+  function chart(svg, o) {
+    var W = 480, H = 300, L = 46, R = 12, T = 14, B = 34, iw = W - L - R, ih = H - T - B, s = '', v, i, d;
+    function X(a) { return L + a * iw; }
+    function Y(a) { return T + ih - (a / o.ymax) * ih; }
+    for (i = 0; i <= 20; i++) { v = i / 20; s += '<line x1="' + X(v) + '" x2="' + X(v) + '" y1="' + T + '" y2="' + (T + ih) + '" class="' + (i % 2 === 0 ? 'grid-l' : 'grid-m') + '"/>'; }
+    var ny = Math.round(o.ymax / o.yminor);
+    for (i = 0; i <= ny; i++) { v = i * o.yminor; var major = Math.abs(v / o.ymajor - Math.round(v / o.ymajor)) < 1e-6; s += '<line x1="' + L + '" x2="' + (L + iw) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" class="' + (major ? 'grid-l' : 'grid-m') + '"/>'; }
+    s += '<line x1="' + L + '" x2="' + (L + iw) + '" y1="' + (T + ih) + '" y2="' + (T + ih) + '" class="ax"/><line x1="' + L + '" x2="' + L + '" y1="' + T + '" y2="' + (T + ih) + '" class="ax"/>';
+    s += '<g class="axis">';
+    for (i = 0; i <= 10; i++) { v = i / 10; s += '<text x="' + X(v) + '" y="' + (T + ih + 14) + '" text-anchor="middle">' + v.toFixed(1) + '</text>'; }
+    var nm = Math.round(o.ymax / o.ymajor);
+    for (i = 0; i <= nm; i++) { v = i * o.ymajor; s += '<text x="' + (L - 6) + '" y="' + (Y(v) + 4) + '" text-anchor="end">' + v.toFixed(o.ydec) + '</text>'; }
+    s += '<text x="' + (L + iw / 2) + '" y="' + (H - 4) + '" text-anchor="middle">p = Pr(S)</text></g>';
+    if (o.envelope) { d = ''; for (i = 0; i <= 200; i++) { v = i / 200; d += (i ? 'L' : 'M') + X(v).toFixed(1) + ' ' + Y(v * (1 - v)).toFixed(1); } s += '<path d="' + d + '" class="env"/>'; }
+    if (o.hline != null) s += '<line x1="' + L + '" x2="' + (L + iw) + '" y1="' + Y(o.hline) + '" y2="' + Y(o.hline) + '" stroke="var(--envelope)" stroke-width="1" stroke-dasharray="5 4"/>';
+    d = ''; for (i = 1; i < 400; i++) { v = i / 400; d += (i > 1 ? 'L' : 'M') + X(v).toFixed(1) + ' ' + Y(o.f(v)).toFixed(1); }
+    s += '<path d="' + d + '" class="curve"/>';
+    s += '<line x1="' + X(o.pstar) + '" x2="' + X(o.pstar) + '" y1="' + T + '" y2="' + (T + ih) + '" class="vline-ps"/>';
+    s += '<line x1="' + X(o.p) + '" x2="' + X(o.p) + '" y1="' + T + '" y2="' + (T + ih) + '" class="vline-p"/>';
+    s += '<circle cx="' + X(o.pstar) + '" cy="' + Y(o.f(o.pstar)) + '" r="4.5" class="peak"/>';
+    s += '<circle cx="' + X(o.p) + '" cy="' + Y(o.f(o.p)) + '" r="5.5" class="mark"/>';
+    s += '<text x="' + Math.min(X(o.p) + 8, L + iw - 60) + '" y="' + Math.max(Y(o.f(o.p)) - 8, T + 12) + '" class="lab" style="fill:var(--split)">' + o.f(o.p).toFixed(3) + '</text>';
+    svg.innerHTML = s;
+  }
+
+  function render() {
+    var kStar = +ps.value, k = +p.value, pstar = kStar / N, pp = k / N;
+    $('psVal').textContent = pstar.toFixed(2);
+    $('pVal').textContent = pp.toFixed(2);
+    // exact counts on 100 states: S is the top k, the ones are the top kStar
+    var sOnes = Math.min(k, kStar), sZeros = k - sOnes, scOnes = kStar - sOnes, scZeros = (N - k) - scOnes;
+    var sSize = k, scSize = N - k, sMean = sOnes / sSize, scMean = scOnes / scSize;
+    var gamma = sMean - scMean, gain = pp * (1 - pp) * gamma * gamma, varY = pstar * (1 - pstar);
+    var state = k === kStar ? 'p = p*: both cells pure, the gain at its maximum p*(1\u2212p*) = ' + varY.toFixed(3) + '.'
+      : (k < kStar ? 'p < p*: S is pure; S^c is taking in ones, so the two means move closer.'
+                   : 'p > p*: S^c is pure; S is taking in zeros, so the two means move closer.');
+    // simple view
+    drawBucket($('b_Sc'), scOnes, scZeros);
+    drawBucket($('b_S'), sOnes, sZeros);
+    $('b_scSize').textContent = scSize + ' states';
+    $('b_sSize').textContent = sSize + ' states';
+    $('b_scCounts').textContent = scOnes + ' ones \u00b7 ' + scZeros + ' zeros';
+    $('b_sCounts').textContent = sOnes + ' ones \u00b7 ' + sZeros + ' zeros';
+    $('b_scMean').innerHTML = '<span>mean = ' + scOnes + '/' + scSize + ' =</span> ' + scMean.toFixed(3);
+    $('b_sMean').innerHTML = '<span>mean = ' + sOnes + '/' + sSize + ' =</span> ' + sMean.toFixed(3);
+    $('b_gain').textContent = gain.toFixed(3);
+    $('b_gainS').textContent = state;
+    $('b_mLeaves').textContent = 'E[Y|S] = ' + sOnes + '/' + sSize + ' = ' + sMean.toFixed(3) + '     E[Y|S^c] = ' + scOnes + '/' + scSize + ' = ' + scMean.toFixed(3);
+    $('b_mGamma').textContent = '\u03b3 = E[Y|S] \u2212 E[Y|S^c] = ' + sMean.toFixed(3) + ' \u2212 ' + scMean.toFixed(3) + ' = ' + gamma.toFixed(3);
+    $('b_mGain').textContent = '\u0394(S)/(h+\u2212h\u2212)\u00b2 = p(1\u2212p)\u03b3\u00b2 = ' + pp.toFixed(2) + ' \u00d7 ' + (1 - pp).toFixed(2) + ' \u00d7 ' + gamma.toFixed(3) + '\u00b2 = ' + gain.toFixed(4);
+    // detailed view
+    drawTape(k, kStar);
+    $('d_sMass').textContent = sSize + ' states \u00b7 p = ' + pp.toFixed(2);
+    $('d_scMass').textContent = scSize + ' states \u00b7 1\u2212p = ' + (1 - pp).toFixed(2);
+    $('d_sOnes').textContent = sOnes; $('d_sZeros').textContent = sZeros;
+    $('d_scOnes').textContent = scOnes; $('d_scZeros').textContent = scZeros;
+    $('d_sMean').textContent = sOnes + '/' + sSize + ' = ' + sMean.toFixed(3);
+    $('d_scMean').textContent = scOnes + '/' + scSize + ' = ' + scMean.toFixed(3);
+    $('d_gamma').textContent = gamma.toFixed(3);
+    $('d_gammaF').textContent = pp <= pstar ? '(1\u2212p*)/(1\u2212p) = ' + (1 - pstar).toFixed(2) + '/' + (1 - pp).toFixed(2) : 'p*/p = ' + pstar.toFixed(2) + '/' + pp.toFixed(2);
+    $('d_gain').textContent = gain.toFixed(4);
+    $('d_gainF').textContent = pp.toFixed(2) + '\u00b7' + (1 - pp).toFixed(2) + '\u00b7' + gamma.toFixed(3) + '\u00b2  (max ' + varY.toFixed(4) + ' at p = p*)';
+    $('d_frac').textContent = (gain / varY).toFixed(3);
+    $('d_fracF').textContent = 'the fraction of Var(Y) the split explains';
+    $('matchNote').textContent = state;
+    chart($('d_c1'), { f: function (v) { return gammaOverD(v, pstar); }, ymax: 1.0, ymajor: 0.1, yminor: 0.05, ydec: 1, hline: 1.0, pstar: pstar, p: pp });
+    chart($('d_c2'), { f: function (v) { return gainOverD2(v, pstar); }, ymax: 0.25, ymajor: 0.05, yminor: 0.025, ydec: 2, envelope: true, pstar: pstar, p: pp });
+  }
+
+  // ---------- which view: "#detail" shows the detailed view; anything else the simple one ----------
+  function viewFromHash() { return /(^|&)detail(&|$)/.test(location.hash.replace(/^#/, '')) ? 'detail' : 'simple'; }
+  var view = viewFromHash();
+  function showView() {
+    var detail = view === 'detail';
+    $('simple').hidden = detail; $('simple').style.display = detail ? 'none' : 'grid';
+    $('detail').hidden = !detail;
+    var extra = document.querySelectorAll('[data-detail]');
+    for (var i = 0; i < extra.length; i++) extra[i].hidden = !detail;
+    window.scrollTo(0, 0);
+  }
+  // the two links switch the view directly (and keep the address in step where the browser allows it)
+  function go(v, ev) {
+    if (ev) ev.preventDefault();
+    view = v;
+    try { history.replaceState(null, '', v === 'detail' ? '#detail' : location.pathname + location.search); } catch (e) {}
+    showView();
+  }
+  // optional starting position, e.g. index.html#ps=50&p=30 or #detail&ps=50&p=30
+  function readDials() {
+    var m, h = location.hash;
+    if ((m = /(?:^#|&)ps=(\d{1,2})(?:&|$)/.exec(h)) && +m[1] >= 1 && +m[1] <= 99) ps.value = m[1];
+    if ((m = /(?:^#|&)p=(\d{1,2})(?:&|$)/.exec(h)) && +m[1] >= 1 && +m[1] <= 99) p.value = m[1];
+  }
+
+  ps.addEventListener('input', render);
+  p.addEventListener('input', render);
+  $('match').addEventListener('click', function () { p.value = ps.value; render(); });
+  $('toDetail').addEventListener('click', function (ev) { go('detail', ev); });
+  $('toSimple').addEventListener('click', function (ev) { go('simple', ev); });
+  window.addEventListener('hashchange', function () { view = viewFromHash(); showView(); });
+  readDials(); showView(); render();
+})();
+</script>
+</body>
+</html>
