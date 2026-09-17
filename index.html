@@ -50,6 +50,8 @@
   button { font: inherit; font-size: 14px; padding: 7px 14px; border: 1px solid var(--rule); background: transparent; color: var(--ink); border-radius: 6px; cursor: pointer; }
   button:hover { border-color: var(--ink-2); }
   .switch { font-size: 15px; }
+  .stage-video { min-height: 92vh; display: grid; align-content: center; justify-items: center; gap: 18px; }
+  .stage-video video { max-height: 84vh; max-width: 100%; height: auto; background: #000; border-radius: 8px; display: block; }
   .btnlike { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; padding: 7px 14px; border: 1px solid var(--rule); border-radius: 6px; color: var(--ink); text-decoration: none; cursor: pointer; }
   .btnlike:hover { border-color: var(--ink-2); }
   .intro { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; min-height: 40px; }
@@ -130,6 +132,13 @@
 </style>
 </head>
 <body>
+<div id="stageVideo" class="stage-video">
+  <h1>Lemma 1</h1>
+  <video id="vid" controls playsinline preload="metadata" src="lemma1_video.mp4"></video>
+  <div class="switch"><a href="#app" id="skipToApp" class="btnlike">Skip to the app &#8594;</a></div>
+</div>
+
+<div id="stageApp" hidden>
 <div class="wrap">
   <h1>Lemma 1: two dials</h1>
 
@@ -181,7 +190,7 @@
       </div>
     </details>
 
-    <div class="switch"><a href="#detail" id="toDetail" class="btnlike">More detail &#8594;</a></div>
+    <div class="switch"><a href="#detail" id="toDetail" class="btnlike">More detail &#8594;</a> &nbsp; <a href="#" class="btnlike toVideo">Watch the video again</a></div>
   </div>
 
   <!-- ===================== the detailed view ===================== -->
@@ -233,8 +242,9 @@
 
     <p class="closed">Closed forms: for p &#8804; p<sub>*</sub>, &#947;(p)/(h<sub>+</sub>&#8722;h<sub>&#8722;</sub>) = (1&#8722;p<sub>*</sub>)/(1&#8722;p); for p &#8805; p<sub>*</sub>, it is p<sub>*</sub>/p. The gain peaks only at p = p<sub>*</sub>, where it equals p<sub>*</sub>(1&#8722;p<sub>*</sub>) = Var(Y)/(h<sub>+</sub>&#8722;h<sub>&#8722;</sub>)<sup>2</sup> and touches the fixed-&#947; curve p(1&#8722;p). With 100 states every count is exact, so the dials step by 0.01.</p>
 
-    <div class="switch"><a href="#" id="toSimple" class="btnlike">&#8592; Back to the simple view</a></div>
+    <div class="switch"><a href="#" id="toSimple" class="btnlike">&#8592; Back to the simple view</a> &nbsp; <a href="#" class="btnlike toVideo">Watch the video again</a></div>
   </div>
+</div>
 </div>
 
 <script>
@@ -367,7 +377,7 @@
   function go(v, ev) {
     if (ev) ev.preventDefault();
     view = v;
-    try { history.replaceState(null, '', v === 'detail' ? '#detail' : location.pathname + location.search); } catch (e) {}
+    try { history.replaceState(null, '', v === 'detail' ? '#app&detail' : '#app'); } catch (e) {}
     showView();
   }
   // optional starting position, e.g. index.html#ps=50&p=30 or #detail&ps=50&p=30
@@ -478,6 +488,25 @@
       el.addEventListener(ev, function (e) { if (running && e.isTrusted) stopIntro(); });
     });
   });
+
+  // ---------- the two stages: the video alone, then the app alone ----------
+  var vid = $('vid');
+  function inAppHash() { return /(^|&)(app|detail|fast|ps=\d+|p=\d+)(&|$)/.test(location.hash.replace(/^#/, '')); }
+  function showStage(app) {
+    $('stageVideo').hidden = app; $('stageApp').hidden = !app;
+    if (app) { try { vid.pause(); } catch (e) {} } else { stopIntro(); }
+    window.scrollTo(0, 0);
+  }
+  vid.addEventListener('ended', function () {
+    showStage(true);
+    try { history.replaceState(null, '', '#app'); } catch (e) {}
+    setTimeout(function () { if (!$('stageApp').hidden && !running) startIntro(); }, 800);
+  });
+  $('skipToApp').addEventListener('click', function (ev) { ev.preventDefault(); showStage(true); try { history.replaceState(null, '', '#app'); } catch (e) {} });
+  Array.prototype.forEach.call(document.querySelectorAll('.toVideo'), function (a) {
+    a.addEventListener('click', function (ev) { ev.preventDefault(); showStage(false); try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} try { vid.currentTime = 0; } catch (e) {} });
+  });
+  showStage(inAppHash());
 
   ps.addEventListener('input', render);
   p.addEventListener('input', render);
